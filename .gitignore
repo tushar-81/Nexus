@@ -1,3 +1,41 @@
-__pycache__
+# ── Secrets & credentials ──────────────────────────────
 .env
+.env.*
+!.env.example
 credentials.json
+token.json
+
+# ── Runtime data ───────────────────────────────────────
+# LangGraph conversation checkpoints (SQLite + WAL files)
+checkpoints.db
+checkpoints.db-*
+*.sqlite
+*.sqlite3
+
+# Generated insight reports
+PDF/*.pdf
+
+# ── Python ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Virtual environments ───────────────────────────────
+venv/
+.venv/
+myenv/
+env/
+
+# ── Editors & OS ───────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ───────────────────────────────────────────────
+*.log

@@ -39,10 +39,8 @@ openai
 # PDF / Report Agent
 pydantic
 pdfkit
-weasyprint
 
 # Utilities
 requests
 pytz
-uuid
 matplotlib
