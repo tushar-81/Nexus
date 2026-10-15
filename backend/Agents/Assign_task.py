@@ -32,7 +32,7 @@ class card(BaseModel):
     name: str = Field(
         description="Title of the task")
     assignee: str = Field(
-        description="Trello member ID assigned to this task")
+        description="Username of the team member assigned to this task, exactly as given in Team Information")
     description: str = Field(
         description="Detailed explanation of what needs to be done")
     checklists: List[checklist] = Field(
@@ -129,8 +129,8 @@ def Extract_tasks(state : State):
     messages = state['messages']
     for message in messages:
         if isinstance(message, HumanMessage):
-            content=str(message.content).lower().split(' ')
-            if '@AI' or '@ai' or '@Ai' in content:
+            #skipping the @ai commands, keeping the team discussion
+            if '@ai' in str(message.content).lower():
                 continue
             conversation_history+= f"Role : Human, Content : {message.content}\n"
         if isinstance(message, AIMessage):
@@ -140,9 +140,8 @@ def Extract_tasks(state : State):
     members_info=''
 
     for member in members:
-        members_info+=f""" Username : {member.get('username')}, 
-                           Role : {member.get('member_role')},
-                           Member Trello_id : {member.get('member_trello_id')} \n"""
+        members_info+=f""" Username : {member.get('username')},
+                           Role : {member.get('member_role')} \n"""
 
     system_instruction = """
 You are a project planning assistant.
@@ -170,7 +169,7 @@ You are given:
 
 Assignment rules:
 - Match task requirements with member roles
-- Assign ONLY the Trello member_id 
+- Set assignee to the member's Username exactly as given
 
 ---
 
@@ -200,7 +199,7 @@ Output rules:
 - Follow the schema exactly
 - Do NOT include explanations
 - Do NOT include extra fields
-- Do NOT generate IDs (except member_id which is provided)
+- Do NOT generate IDs
 - Keep names concise and meaningful
 
 ---
@@ -367,6 +366,45 @@ def set_due_date(card_id, due_date):
     response = requests.put(url, params=params)
     return response.json()
 
+def get_board_labels(board_id):
+    url = f"{BASE_URL}/boards/{board_id}/labels"
+
+    params = {
+        "key": API_KEY,
+        "token": TOKEN
+    }
+
+    response = requests.get(url, params=params)
+    return response.json()
+
+def create_label(board_id, label_name, color):
+    url = f"{BASE_URL}/labels"
+
+    params = {
+        "name": label_name,
+        "color": color,
+        "idBoard": board_id,
+        "key": API_KEY,
+        "token": TOKEN
+    }
+
+    response = requests.post(url, params=params)
+    return response.json()
+
+def add_label(card_id, label_id):
+    url = f"{BASE_URL}/cards/{card_id}/idLabels"
+
+    params = {
+        "value": label_id,
+        "key": API_KEY,
+        "token": TOKEN
+    }
+
+    response = requests.post(url, params=params)
+    return response.json()
+
+LABEL_COLORS = ['green', 'purple', 'orange', 'sky', 'pink', 'lime', 'red', 'yellow', 'blue', 'black']
+
 
 def Trello_agent(state:State):
 
@@ -378,8 +416,18 @@ def Trello_agent(state:State):
     Trello_board_id=state['board_id']
 
     Lists=board_outline.get('lists')
-    
 
+    #team members by username/name, members not on the Trello board get a name label instead of a real assignment
+    members_lookup={}
+    for member in state.get('members_list', []):
+        for key in (member.get('username'), member.get('name')):
+            if key:
+                members_lookup[key.lower()]=member
+
+    board_labels={}
+    for label in get_board_labels(Trello_board_id):
+        if label.get('name'):
+            board_labels[label['name']]=label['id']
 
     for lst in Lists:
         lst_name=lst.get('name')
@@ -393,20 +441,40 @@ def Trello_agent(state:State):
         for card in cards:
             card_name=card.get('name')
             card_desc=card.get('description')
-            card_assignee_id=card.get('assignee', None)
+            card_assignee=card.get('assignee') or ''
             card_due_date=card.get('due_date', None)
 
+            member=members_lookup.get(card_assignee.lower())
+            member_trello_id=member.get('member_trello_id') if member else ''
+
+            assignee_label=''
+            if card_assignee and not member_trello_id:
+                if member:
+                    display_name=member.get('name') or member.get('username')
+                    assignee_label=f"{display_name} ({member.get('member_role')})"
+                else:
+                    assignee_label=card_assignee
+                card_desc=f"Assigned to: {assignee_label}\n\n{card_desc}"
 
             Trello_card=create_card(Trello_list_id, card_name, card_desc)
 
             Trello_card_id=Trello_card.get('id')
             print(f'{board_outline}\n {lst} \n{card}')
-            
+
             if card_due_date:
                 set_due_date(Trello_card_id, card_due_date)
 
-            if card_assignee_id:
-                assign_member(Trello_card_id, card_assignee_id)
+            if member_trello_id:
+                assign_member(Trello_card_id, member_trello_id)
+
+            elif assignee_label:
+                try:
+                    if assignee_label not in board_labels:
+                        color=LABEL_COLORS[len(board_labels) % len(LABEL_COLORS)]
+                        board_labels[assignee_label]=create_label(Trello_board_id, assignee_label, color)['id']
+                    add_label(Trello_card_id, board_labels[assignee_label])
+                except Exception as e:
+                    print(f'Label for {assignee_label} failed: {e}')
 
             checklists=card.get('checklists')
 

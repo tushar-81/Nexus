@@ -34,5 +34,5 @@ def general_agent(state : State):
     response=llm.invoke([SystemMessage(content=system), HumanMessage(content=user_message)])
 
     return {
-        'messages' : response
+        'messages' : [response]
     }
