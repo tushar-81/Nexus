@@ -352,16 +352,17 @@ Your task is to convert structured insights (JSON input) into a professional, vi
 COLOR SCHEME — STRICT, DO NOT DEVIATE:
 
 Use ONLY these colors throughout the entire document:
-- Primary dark green:  #1a472a  (headings, section titles, header background)
-- Mid green:           #2d6a4f  (subheadings, borders, accents)
-- Light green:         #52b788  (highlights, badges, bullet markers)
-- Pale green:          #95d5b2  (backgrounds of cards, subtle fills)
+- Nexus forest:        #12372a  (headings, section titles, header background)
+- Nexus green:         #147a4b  (subheadings, borders, accents)
+- Leaf green:          #4bb684  (highlights, badges, bullet markers)
+- Pale green:          #cfe3d7  (borders of cards, subtle dividers)
+- Mint wash:           #eef5f0  (backgrounds of cards, subtle fills)
 - White:               #ffffff  (main content background)
 - Dark text:           #333333  (body text)
 - Muted text:          #666666  (secondary text, labels)
 
 DO NOT use blue, purple, red, or any other color family.
-ALL h1, h2, h3 tags must use color: #1a472a — never blue.
+ALL h1, h2, h3 tags must use color: #12372a — never blue.
 
 ---
 
@@ -409,19 +410,20 @@ Rules:
 LAYOUT AND STYLING:
 
 Structure:
-- A dark green header (#1a472a) with white title text and the date
+- A forest green header (#12372a) with white title text and the date
+- Use solid background colors only — NO linear-gradient / radial-gradient (the PDF renderer drops them)
 - Leave 80px padding at top and 220px padding at bottom (for background wave design)
 - Side padding: 50px left and right
 - Each section in a white semi-transparent card: background: rgba(255,255,255,0.93)
-- Section headings (h2) in #1a472a with a 4px left border in #52b788
-- Bullet points using color #52b788 markers
-- High importance insights get a left border: border-left: 3px solid #52b788
-- Medium importance insights get a left border: border-left: 3px solid #95d5b2
+- Section headings (h2) in #12372a with a 4px left border in #147a4b
+- Bullet points using color #4bb684 markers
+- High importance insights get a left border: border-left: 3px solid #147a4b
+- Medium importance insights get a left border: border-left: 3px solid #4bb684
 
 Chart container styling:
   .chart-container {{
-      background: rgba(248, 255, 252, 0.9);
-      border: 1px solid #95d5b2;
+      background: rgba(238, 245, 240, 0.9);
+      border: 1px solid #cfe3d7;
       border-radius: 8px;
       padding: 12px;
       margin: 12px 0;

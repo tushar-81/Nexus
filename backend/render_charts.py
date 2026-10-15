@@ -94,7 +94,7 @@ def build_chart_lookup(agent1_output) -> dict:
 #   4. prepends the data URI prefix
 # ─────────────────────────────────────────────────────────────────────────────
 
-COLORS = ['#1a472a', '#2d6a4f', '#52b788', '#95d5b2', '#b7e4c7', '#cce8d8']
+COLORS = ['#12372a', '#4bb684', '#147a4b', '#20b873', '#2a6049', '#0c4a2e']
 
 def fig_to_b64(fig) -> str:
     buf = BytesIO()
@@ -121,7 +121,7 @@ def generate_bar_chart(labels: list, values: list, title: str) -> str:
                   edgecolor='none', width=0.5)
 
     # Styling
-    ax.set_title(title, fontsize=11, color='#1a472a', pad=10, fontweight='bold')
+    ax.set_title(title, fontsize=11, color='#12372a', pad=10, fontweight='bold')
     ax.set_facecolor('white')
     fig.patch.set_facecolor('white')
     for spine in ['top', 'right']:
@@ -177,7 +177,7 @@ def generate_pie_chart(labels: list, values: list, title: str) -> str:
         frameon=False
     )
 
-    ax.set_title(title, fontsize=12, color='#1a472a', pad=15, fontweight='bold')
+    ax.set_title(title, fontsize=12, color='#12372a', pad=15, fontweight='bold')
     fig.patch.set_facecolor('white')
     plt.tight_layout()
 
@@ -187,16 +187,16 @@ def generate_line_chart(labels: list, values: list, title: str) -> str:
     fig, ax = plt.subplots(figsize=(6, 3))
 
     ax.plot(labels, values,
-            color='#2d6a4f', linewidth=2.5,
+            color='#147a4b', linewidth=2.5,
             marker='o', markersize=6,
-            markerfacecolor='#52b788',
+            markerfacecolor='#4bb684',
             markeredgecolor='white',
             markeredgewidth=1.5)
 
     # Shaded area under line
-    ax.fill_between(labels, values, alpha=0.12, color='#52b788')
+    ax.fill_between(labels, values, alpha=0.12, color='#4bb684')
 
-    ax.set_title(title, fontsize=11, color='#1a472a', pad=10, fontweight='bold')
+    ax.set_title(title, fontsize=11, color='#12372a', pad=10, fontweight='bold')
     ax.set_facecolor('white')
     fig.patch.set_facecolor('white')
     for spine in ['top', 'right']:
@@ -210,7 +210,7 @@ def generate_line_chart(labels: list, values: list, title: str) -> str:
         ax.annotate(str(y), (x, y),
                     textcoords="offset points",
                     xytext=(0, 8),
-                    ha='center', fontsize=8, color='#2d6a4f')
+                    ha='center', fontsize=8, color='#147a4b')
 
     plt.tight_layout()
 
@@ -360,10 +360,11 @@ def html_to_pdf(html: str, output_path: str = './PDF/report.pdf',
     image_b64 = image_to_base64('./pdf_image.png')
     footer_content = f"""<!DOCTYPE html><html><head><style>
 body {{ margin:0; padding:0; }}
-div {{ 
-    width:100%; height:100px;
+div {{
+    width:100%; padding-top:14.5%;   /* height tracks width so the wave + badge show */
     background-image: url('{image_b64}');
-    background-size: cover;
+    background-size: 100% auto;
+    background-repeat: no-repeat;
     background-position: bottom;
 }}
 </style></head><body><div></div></body></html>"""
