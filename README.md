@@ -25,7 +25,7 @@
 
 ## Project Demo
 
-[![Watch the Nexus demo](https://img.youtube.com/vi/wNY4m6hDNo4/maxresdefault.jpg)](https://youtu.be/wNY4m6hDNo4)
+[![Watch the Nexus demo](thumbnail.png)](https://youtu.be/ph5zByav8CA)
 
 ---
 ## What it does
