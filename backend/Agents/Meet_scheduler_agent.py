@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from langgraph.types import Command, interrupt
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
-from backend.Agents.Common_State import State
+from backend.Agents.Common_State import State, last_user_message
 from dotenv import load_dotenv
 import pytz
 import uuid
@@ -31,7 +31,7 @@ def Scheduler_Agent(state : State):
     LLM_instruction = state.get('LLM_instruction')
     feedback=state.get('Meet_feedback', '')
     # Fetching meeting details from user's last interaction
-    user_input=state['messages'][-1].content
+    user_input=last_user_message(state)
     tz = pytz.timezone("Asia/Kolkata")
     today=datetime.now(tz)
     prompt = f"""
@@ -75,7 +75,9 @@ Text:
     }
 
     return {
-        'Meet_dict' : meet_dict
+        'Meet_dict' : meet_dict,
+        #kept so a rescheduling feedback can refer to what was proposed
+        'Last_Scheduler_Agent_output' : str(meet_dict)
     }
 
 
@@ -130,7 +132,9 @@ def create_meeting(state : State):
 
     return {
         'Meet_link' : event["hangoutLink"],
-        'messages' : [AIMessage(content=f'meeting link {event["hangoutLink"]}')]    }
+        'messages' : [AIMessage(content=f'meeting link {event["hangoutLink"]}')],
+        'step_results' : [f'Meeting "{summary}" scheduled from {start_date_time} to {end_date_time}, Google Meet link: {event["hangoutLink"]}']
+    }
 
 def review_meeting(state: State):
     response= interrupt({
@@ -139,9 +143,9 @@ def review_meeting(state: State):
             {"name": "decision", "type": "select", "options": ["approve", "reject"]},
             {"name": "feedback", "type": "text"}
         ],
+        #no Meet link yet, the event is created only after approval
         "initial_values": {
-            "Meeting_Details": state["Meet_dict"],
-            "Meet_Link": state["Meet_link"]
+            "Meeting_Details": state["Meet_dict"]
         }
     })
     print('HITL_scheduler resumed')
@@ -155,7 +159,7 @@ def review_meeting(state: State):
         feedback=None
 
     if decision == 'approve':
-        return Command(goto=END, update={'Meet_feedback' : None})
+        return Command(goto='Create_Meet', update={'Meet_feedback' : None})
     
     else:
         return Command(

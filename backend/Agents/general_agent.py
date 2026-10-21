@@ -1,4 +1,4 @@
-from backend.Agents.Common_State import State
+from backend.Agents.Common_State import State, last_user_message
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
@@ -29,10 +29,11 @@ def general_agent(state : State):
     Instruction : {LLM_instruction}
     """
 
-    user_message = messages[-1].content
+    user_message = last_user_message(state)
 
     response=llm.invoke([SystemMessage(content=system), HumanMessage(content=user_message)])
 
     return {
-        'messages' : [response]
+        'messages' : [response],
+        'step_results' : [f'Answer : {response.content}']
     }

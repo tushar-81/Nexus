@@ -14,6 +14,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 node_display_names = {
     'Orchestrator':     'Orchestrator',
+    'Dispatcher':       'Next Step',
     'Email_Content':    'Email Agent',
     'HITL_Email':       'Email Review',
     'Send_Email':       'Sending Email',
@@ -211,6 +212,14 @@ async def Websocket_Chat(websocket : WebSocket):
 
                 await manager.broadcast({"type": "close_interrupt"})
 
+                #every AI reply made after the resume, a multi step plan can finish several steps (or stop at the next review)
+                messages_after = result_after.get('messages') or []
+                ids_after = [m.id for m in messages_after]
+                start = ids_after.index(last_id_before) + 1 if last_id_before in ids_after else len(messages_after)
+                for message in messages_after[start:]:
+                    if isinstance(message, AIMessage) and message.content:
+                        await manager.broadcast({'role' : 'AI', 'text' : message.content})
+
                 if "__interrupt__" in result_after:
                     interrupt_data = result_after["__interrupt__"][0].value
 
@@ -219,16 +228,6 @@ async def Websocket_Chat(websocket : WebSocket):
                         "subtype": interrupt_data.get('type'),
                         "data": interrupt_data
                     })
-                    continue
-                
-                messages_after = result_after.get('messages') or []
-                if messages_after and messages_after[-1].id != last_id_before:
-                    await manager.broadcast(
-                            {
-                                'role' : 'AI',
-                                'messages' : messages_after[-1].content
-                            }
-                        )
                 continue
     except WebSocketDisconnect:
         pass

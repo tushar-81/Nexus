@@ -494,7 +494,9 @@ def Trello_agent(state:State):
                     
     
 
+    card_names=[card.get('name') for lst in Lists for card in lst.get('cards', [])]
     return {
         'board_id' : Trello_board_id,
-        'messages': [AIMessage(content=f"Trello board '{board_name}' created successfully.")]
+        'messages': [AIMessage(content=f"Trello board '{board_name}' created successfully.")],
+        'step_results': [f"Trello board '{board_name}' updated with {len(card_names)} tasks: {', '.join(card_names)}"]
     }

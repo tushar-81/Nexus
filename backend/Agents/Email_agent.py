@@ -6,7 +6,7 @@ from typing import Optional
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from backend.Agents.Common_State import State
+from backend.Agents.Common_State import State, last_user_message
 from langgraph.types import Command, interrupt
 import os
 load_dotenv()
@@ -21,7 +21,7 @@ def Email_agent(state : State):
     last_generated_body=state.get('body', '')
 
     LLM_instruction = state['LLM_instruction']
-    user_message= state['messages'][-1].content
+    user_message= last_user_message(state)
     llm=ChatOpenAI(model='gpt-4o-mini')
     structured_llm=llm.with_structured_output(Email_Arguments)
 
@@ -103,7 +103,8 @@ def review_node(state: State):
         {"name": "body", "type": "textarea"},
         {"name": "to", "type": "text"},
         {"name": "cc", "type": "text"},
-        {"name": "bcc", "type": "text"}
+        {"name": "bcc", "type": "text"},
+        {"name": "feedback", "type": "text"}
     ],
     "initial_values": {
         "subject": state["subject"],
@@ -137,7 +138,8 @@ def review_node(state: State):
             goto="Email_Content",
             update={
                 "subject": updated_subject,
-                "body": updated_body
+                "body": updated_body,
+                "Email_Feedback": user_input.get('feedback') or 'Rejected without a comment, write a better draft'
             }
         )
     
@@ -171,9 +173,13 @@ def send_email(state : State):
             server.login(sender, app_password)
             server.sendmail(sender, all_recipients, msg.as_string())
         print("✅ EMAIL SENT")
-        return {'email_status': 'sent successfully', 'messages': [AIMessage(content='email sent successfully')]}
-        
+        return {'email_status': 'sent successfully',
+                'messages': [AIMessage(content='email sent successfully')],
+                'step_results': [f"Email '{state['subject']}' sent to {', '.join(to_email)}"]}
+
 
     except smtplib.SMTPException as e:
         print("❌ EMAIL FAILED:", str(e))
-        return {'email_status': f'failed: {str(e)}'}
+        return {'email_status': f'failed: {str(e)}',
+                'messages': [AIMessage(content=f'email failed: {str(e)}')],
+                'step_results': [f'Email could not be sent: {str(e)}']}

@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from backend.render_charts import inject_charts, image_to_base64,inject_page_break_css, html_to_pdf, inject_font_html, inject_background
 import base64
 import os
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 
@@ -37,7 +39,15 @@ def search_tool(query: str):
     search_dict=search(query=query)
     web_search_result=get_webpage(query, search_dict)
 
-    return web_search_result
+    #plain text for the model, the (chunk, score) tuples only add noise
+    result_text=''
+    for source, chunks in web_search_result.items():
+        result_text+=f'Source : {source}\n'
+        for chunk, score in chunks:
+            result_text+=f'- {chunk}\n'
+        result_text+='\n'
+
+    return result_text or 'No results found.'
 
 
 class DataPoint(BaseModel):
@@ -91,14 +101,26 @@ class Agent1Output(BaseModel):
         description="Missing information or areas needing validation or research.")
 
 
+MAX_SEARCHES = 5
+
+
+def run_search(call):
+    print(f"[PDF search] {call['args']}")
+    try:
+        return search_tool.invoke(call['args'])
+    except Exception as e:
+        print(f"[PDF search] failed for {call['args']}: {e}")
+        return 'Search failed, use industry estimates instead.'
+
+
 def Agent1(state:State):
     conversation_history = ''
     
     messages = state['messages']
     for message in messages:
         if isinstance(message, HumanMessage):
-            content=str(message.content).lower().split(' ')
-            if '@AI' or '@ai' or '@Ai' in content:
+            #skipping the @ai commands, keeping the team discussion
+            if '@ai' in str(message.content).lower():
                 continue
             conversation_history+= f"Role : Human, Content : {message.content}\n"
         if isinstance(message, AIMessage):
@@ -301,9 +323,43 @@ INSTRUCTIONS:
 
     llm=ChatOpenAI(model='gpt-4o-mini')
     llm_with_tool=llm.bind_tools([search_tool])
-    llm_structure=llm_with_tool.with_structured_output(Agent1Output)
 
-    response=llm_structure.invoke([SystemMessage(content=prompt), HumanMessage(content=human_instruction)])
+    research_instruction = f'''{human_instruction}
+Today's date : {datetime.now().strftime('%B %d, %Y')}
+
+First do the research: call search_tool for the numbers you need (max {MAX_SEARCHES} searches).
+When you have enough data reply only with DONE, the report JSON is requested after that.
+'''
+    messages=[SystemMessage(content=prompt), HumanMessage(content=research_instruction)]
+
+    #research loop, runs the searches the model asks for until it stops asking or the limit is hit
+    searches_left=MAX_SEARCHES
+    while searches_left > 0:
+        ai_msg=llm_with_tool.invoke(messages)
+        if not ai_msg.tool_calls:
+            break
+        messages.append(ai_msg)
+
+        allowed=ai_msg.tool_calls[:searches_left]
+        searches_left-=len(allowed)
+        #searches are slow (page fetches), so the ones from the same turn run in parallel
+        with ThreadPoolExecutor(max_workers=len(allowed)) as pool:
+            results=list(pool.map(run_search, allowed))
+
+        for call, result in zip(allowed, results):
+            messages.append(ToolMessage(content=result, tool_call_id=call['id']))
+        #every tool call needs an answer, even the ones over the limit
+        for call in ai_msg.tool_calls[len(allowed):]:
+            messages.append(ToolMessage(content='Search limit reached, use the data you already have.', tool_call_id=call['id']))
+
+    #the search results are long, so the rules the charts depend on are repeated here
+    messages.append(HumanMessage(content='''Research is complete. Now return the full report JSON, using the search results above for the numbers.
+- Every category must have at least 2 insights
+- Each chart shows ONE metric in ONE unit, convert values so they match (e.g. all market sizes in $B, never mix $M and $B)
+- Never put ratings and prices in the same chart, make separate insights for them
+- line_chart labels are only years, put growth rates like CAGR in the insight text, not in the data_points'''))
+    llm_structure=llm.with_structured_output(Agent1Output)
+    response=llm_structure.invoke(messages)
 
     return {
         'Agent1Output':response
@@ -486,6 +542,7 @@ INPUT JSON:
     html_to_pdf(html, output_path='./PDF/report.pdf')
     return {
         "pdf_html": html,
-        "messages": [AIMessage(content=f"Report generated successfully at path ./PDF/report.pdf")]
+        "messages": [AIMessage(content=f"Report generated successfully at path ./PDF/report.pdf")],
+        "step_results": ["Project insight report generated at ./PDF/report.pdf"]
     }
     

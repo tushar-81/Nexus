@@ -15,7 +15,7 @@ def Pass_AI(state: State):
     
     return 'CHAT'
 
-def orchestrator_function(state : State):
+def dispatcher_function(state : State):
     next=state.get('next', '')
     return str(next)
 

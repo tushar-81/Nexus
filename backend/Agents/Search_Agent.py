@@ -25,12 +25,20 @@ tz = pytz.timezone("Asia/Kolkata")
 today=datetime.now(tz)
 
 def search(query: str):
-    with DDGS() as ddgs:
-        results = ddgs.text(
-            query,
-            max_results=15
-        )
-        return list(results)
+    #'auto' often comes back empty for some queries, so falling back to other engines
+    for backend in ['auto', 'bing', 'yahoo']:
+        try:
+            with DDGS() as ddgs:
+                results = list(ddgs.text(
+                    query,
+                    max_results=15,
+                    backend=backend
+                ))
+            if results:
+                return results
+        except Exception as e:
+            print(f"[Search] {backend} failed for '{query}': {e}")
+    return []
 
 
 def get_words_list(text: str):
@@ -302,5 +310,6 @@ Answer the query using the above results.
     response=llm.invoke([SystemMessage(content=instruction), HumanMessage(content=user_message)])
     print(response)
     return {
-        'messages' : [AIMessage(content=response.content)]
+        'messages' : [AIMessage(content=response.content)],
+        'step_results' : [f'Search result for "{query}" : {response.content}']
     }
