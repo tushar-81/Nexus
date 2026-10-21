@@ -32,7 +32,7 @@
 
 Nexus is a multi-user WebSocket chat application backed by a LangGraph multi-agent system. Teams can discuss ideas freely, and when they are ready, any user can trigger the AI with `@AI` to perform tasks like drafting emails, scheduling meetings, generating insight reports, searching the web, or creating Trello boards — all without leaving the conversation.
 
-Every action that involves real-world consequences (sending an email, creating a calendar event, pushing to Trello) requires **human approval** before it executes. All connected users must vote to approve before the action proceeds.
+Every action that involves real-world consequences (sending an email, creating a calendar event, pushing to Trello) requires **human approval** before it executes. Any user in the room can approve or reject the action.
 
 ---
 
@@ -58,7 +58,7 @@ Three agents pause for human review before taking action:
 - **Meeting Review** — shows scheduled meeting details and the Google Meet link
 - **Trello Board Review** — shows an interactive Kanban board with editable cards and checklists
 
-All users in the room must vote **Approve** before the action proceeds. A single **Reject** vote immediately sends it back for regeneration with feedback.
+The review is shown to everyone in the room, and the first user to respond decides: **Approve** lets the action proceed, **Reject** sends it back for regeneration with feedback.
 
 ---
 
@@ -183,7 +183,7 @@ Include `@AI` anywhere in your message:
 
 ### Approving HITL actions
 
-When the AI needs your sign-off, an overlay appears for all users in the room. Everyone must click **Approve** for the action to proceed. Any user can **Reject** with feedback to regenerate.
+When the AI needs your sign-off, an overlay appears for all users in the room. Any user can click **Approve** to let the action proceed, or **Reject** with feedback to regenerate. The first response is the one that counts, and the overlay closes for everyone once it is handled.
 
 ### Agent progress tracker
 
@@ -204,7 +204,7 @@ PROGRESS
 
 **Conditional graph entry** — `Pass_AI` is the first conditional edge. If the message contains `@AI` it routes to the Orchestrator. Otherwise the graph goes directly to `END` — no agent runs, the message is just stored.
 
-**HITL voting** — the `WebSocket_Manager` tracks votes per interrupt. The graph only resumes via `Command(resume=...)` once all users approve, or immediately if anyone rejects.
+**HITL approval** — when the graph hits an interrupt, the review is broadcast to every connected user. The first approve or reject resumes the graph via `Command(resume=...)` and the overlay is closed for everyone. Later responses to an interrupt that has already been handled are ignored.
 
 **Agent streaming** — the server uses `graph.astream(stream_mode="updates")` so each node completion is broadcast to the frontend in real time as it happens.
 
