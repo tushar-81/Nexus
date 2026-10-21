@@ -774,6 +774,10 @@ function buildEmailPanel(data) {
         <textarea id="ef-body" rows="8">${esc(body)}</textarea>
       </div>
     </div>
+    <div class="field-group">
+      <label class="field-label">Feedback (if rejecting)</label>
+      <input class="field-input" id="ef-feedback" placeholder="e.g. make it shorter, mention the new deadline"/>
+    </div>
   </div>
   <div class="interrupt-actions">
     <button class="btn-reject" onclick="emailReject()">Reject</button>
@@ -793,7 +797,7 @@ window.emailApprove = function() {
   });
 };
 window.emailReject = function() {
-  resumeCommand({ status: 'rejected' });
+  resumeCommand({ status: 'rejected', feedback: v('ef-feedback') });
 };
 
 // ── Meeting Panel ──
@@ -836,7 +840,7 @@ function buildMeetPanel(data) {
   </div>
   <div class="interrupt-actions">
     <button class="btn-reject" onclick="meetReject()">Reschedule</button>
-    <button class="btn-approve" onclick="meetApprove()">Approve</button>
+    <button class="btn-approve" onclick="meetApprove()">Approve &amp; create</button>
   </div>`;
 }
 
